@@ -56,7 +56,7 @@ func (db *DB) ListActivitiesPage(ctx context.Context, actorURL string, beforeID 
 		q = q.Where("id < ?", beforeID)
 	}
 
-	q = q.OrderExpr("id DESC").Limit(limit)
+	q = q.OrderExpr("id DESC").Limit(int64(limit))
 
 	err := q.Scan(ctx)
 	if err != nil {

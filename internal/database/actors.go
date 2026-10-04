@@ -147,7 +147,7 @@ func (db *DB) CountPeers(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("counting actors: %w", err)
 	}
-	return count, nil
+	return int(count), nil
 }
 
 // AddFollowRequest creates or updates a pending follow request.
@@ -379,7 +379,7 @@ func (db *DB) CountFollows(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("counting follows: %w", err)
 	}
-	return count, nil
+	return int(count), nil
 }
 
 // ListFollowsPage returns followers with pagination.
@@ -388,8 +388,8 @@ func (db *DB) ListFollowsPage(ctx context.Context, offset, limit int) ([]Actor, 
 	err := db.bun.NewSelect().Model(&actors).
 		Where("they_follow_us = TRUE").
 		OrderExpr("they_follow_us_at DESC").
-		Limit(limit).
-		Offset(offset).
+		Limit(int64(limit)).
+		Offset(int64(offset)).
 		Scan(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listing follows page: %w", err)
@@ -403,7 +403,7 @@ func (db *DB) ListFollowsBatch(ctx context.Context, afterID int64, limit int) ([
 	err := db.bun.NewSelect().Model(&actors).
 		Where("they_follow_us = TRUE AND id > ?", afterID).
 		OrderExpr("id ASC").
-		Limit(limit).
+		Limit(int64(limit)).
 		Scan(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listing follows batch: %w", err)
@@ -598,7 +598,7 @@ func (db *DB) CountOutgoingFollows(ctx context.Context, status string) (int, err
 	if err != nil {
 		return 0, fmt.Errorf("counting outgoing follows: %w", err)
 	}
-	return count, nil
+	return int(count), nil
 }
 
 // ListOutgoingFollowsPage returns actors we follow with pagination.
@@ -607,8 +607,8 @@ func (db *DB) ListOutgoingFollowsPage(ctx context.Context, status string, limit,
 	err := db.bun.NewSelect().Model(&actors).
 		Where("we_follow_them = TRUE AND we_follow_status = ?", status).
 		OrderExpr("created_at DESC").
-		Limit(limit).
-		Offset(offset).
+		Limit(int64(limit)).
+		Offset(int64(offset)).
 		Scan(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listing outgoing follows page: %w", err)
@@ -624,7 +624,7 @@ func (db *DB) ListOutgoingFollowsBatch(ctx context.Context, status string, after
 	err := db.bun.NewSelect().Model(&actors).
 		Where("we_follow_them = TRUE AND we_follow_status = ? AND id > ?", status, afterID).
 		OrderExpr("id ASC").
-		Limit(limit).
+		Limit(int64(limit)).
 		Scan(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listing outgoing follows batch: %w", err)

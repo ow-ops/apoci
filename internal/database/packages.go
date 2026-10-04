@@ -127,7 +127,7 @@ func (db *DB) ListPackages(ctx context.Context, pkgType, startAfter string, limi
 		Where("type = ?", pkgType).
 		Where("name > ?", startAfter).
 		OrderExpr("name").
-		Limit(limit).
+		Limit(int64(limit)).
 		Scan(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listing packages: %w", err)

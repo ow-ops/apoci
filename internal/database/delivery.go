@@ -38,7 +38,7 @@ func (db *DB) PendingDeliveries(ctx context.Context, limit int) ([]Delivery, err
 		Where("status = 'pending'").
 		Where("next_attempt_at <= CURRENT_TIMESTAMP").
 		OrderExpr("next_attempt_at ASC").
-		Limit(limit).
+		Limit(int64(limit)).
 		Scan(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("querying pending deliveries: %w", err)
