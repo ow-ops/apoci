@@ -9,7 +9,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -95,18 +94,12 @@ func NewS3(cfg S3Config, logger *slog.Logger) (*S3Store, error) {
 // interrupted before its deferred cleanup ran (crash/OOM/SIGKILL). The prefix is
 // process-specific, so it's safe even when tempDir is shared.
 func (s *S3Store) removeStaleTempFiles() {
-	matches, err := filepath.Glob(filepath.Join(s.tempDir, "apoci-s3-upload-*"))
-	if err != nil {
-		s.logger.Warn("blobstore: globbing stale s3 temp files failed", "error", err)
-		return
-	}
-	for _, m := range matches {
-		if err := os.Remove(m); err != nil {
-			s.logger.Warn("blobstore: removing stale s3 temp file failed", "path", m, "error", err)
-			continue
-		}
-		s.logger.Info("blobstore: removed stale s3 upload temp file", "path", m)
-	}
+	removeTempFiles(s.logger, s.tempDir, 0, "apoci-s3-upload-*")
+}
+
+// CleanStaleTemp removes staging files idle for at least maxAge.
+func (s *S3Store) CleanStaleTemp(_ context.Context, maxAge time.Duration) (int, error) {
+	return removeTempFiles(s.logger, s.tempDir, maxAge, "apoci-s3-upload-*"), nil
 }
 
 func (s *S3Store) Put(ctx context.Context, r io.Reader, expectedDigest string) (string, int64, error) {
@@ -253,6 +246,24 @@ func (s *S3Store) Delete(ctx context.Context, digest string) error {
 		return fmt.Errorf("deleting blob from S3: %w", err)
 	}
 	return nil
+}
+
+// DeleteIfOlder is best effort on S3: it re-reads LastModified right before the
+// delete, which narrows but cannot eliminate the window for a concurrent upload.
+func (s *S3Store) DeleteIfOlder(ctx context.Context, digest string, cutoff time.Time) (bool, error) {
+	if !cutoff.IsZero() {
+		mtime, err := s.ModTime(ctx, digest)
+		if err != nil {
+			if errors.Is(err, ErrBlobNotFound) {
+				return false, nil
+			}
+			return false, err
+		}
+		if mtime.After(cutoff) {
+			return false, nil
+		}
+	}
+	return true, s.Delete(ctx, digest)
 }
 
 func (s *S3Store) ListDigests(ctx context.Context) ([]string, error) {

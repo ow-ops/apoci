@@ -34,8 +34,18 @@ type BlobStore interface {
 	Size(ctx context.Context, digest string) (int64, error)
 	// Delete removes the blob. It is not an error if the blob does not exist.
 	Delete(ctx context.Context, digest string) error
+	// ListDigests returns the digests it could enumerate. Unreadable parts of the
+	// store are skipped (and logged) so one bad shard doesn't block GC.
 	ListDigests(ctx context.Context) ([]string, error)
 	ModTime(ctx context.Context, digest string) (time.Time, error)
+	// DeleteIfOlder removes the blob only if it was last modified at or before
+	// cutoff, re-checking at delete time so a concurrent re-upload isn't reaped.
+	// A zero cutoff deletes unconditionally. Reports whether it was deleted.
+	DeleteIfOlder(ctx context.Context, digest string, cutoff time.Time) (bool, error)
+	// CleanStaleTemp removes upload staging files untouched for at least maxAge
+	// and returns how many it handled (blobs restored from an interrupted
+	// DeleteIfOlder count too).
+	CleanStaleTemp(ctx context.Context, maxAge time.Duration) (int, error)
 }
 
 type Store struct {
@@ -57,18 +67,76 @@ func New(dataDir string, logger *slog.Logger) (*Store, error) {
 // by an interrupted Put. They sit outside the two-char shards, so ListDigests
 // (and thus GC) never sees them. Safe at startup: no Put is in flight.
 func (s *Store) removeStaleTempFiles() {
-	matches, err := filepath.Glob(filepath.Join(s.root, ".upload-*"))
+	removeTempFiles(s.logger, s.root, 0, ".upload-*")
+	s.recoverTrash()
+}
+
+// CleanStaleTemp removes staging files from interrupted Puts while the server
+// keeps running. In-flight Puts keep touching their file, so only files idle for
+// maxAge are removed.
+func (s *Store) CleanStaleTemp(_ context.Context, maxAge time.Duration) (int, error) {
+	n := removeTempFiles(s.logger, s.root, maxAge, ".upload-*")
+	return n + s.recoverTrash(), nil
+}
+
+// recoverTrash resolves ".trash-*" files left by a DeleteIfOlder that was
+// interrupted between moving a blob aside and deciding its fate. The blob goes
+// back unless a newer copy exists; GC re-evaluates it on its next pass. Callers
+// must not run it concurrently with DeleteIfOlder.
+func (s *Store) recoverTrash() int {
+	matches, err := filepath.Glob(filepath.Join(s.root, ".trash-*"))
 	if err != nil {
-		s.logger.Warn("blobstore: globbing stale temp files failed", "error", err)
-		return
+		s.logger.Warn("blobstore: globbing trashed blobs failed", "error", err)
+		return 0
 	}
+	recovered := 0
 	for _, m := range matches {
-		if err := os.Remove(m); err != nil {
-			s.logger.Warn("blobstore: removing stale temp file failed", "path", m, "error", err)
+		hash := strings.TrimPrefix(filepath.Base(m), ".trash-")
+		if !hexDigestRe.MatchString(hash) {
 			continue
 		}
-		s.logger.Info("blobstore: removed stale upload temp file", "path", m)
+		path := filepath.Join(s.root, hash[:2], hash)
+		if _, err := os.Stat(path); err == nil {
+			_ = os.Remove(m)
+			continue
+		}
+		if err := os.Rename(m, path); err != nil {
+			s.logger.Warn("blobstore: restoring trashed blob failed", "path", m, "error", err)
+			continue
+		}
+		s.logger.Info("blobstore: restored blob from interrupted delete", "digest", "sha256:"+hash)
+		recovered++
 	}
+	return recovered
+}
+
+// removeTempFiles deletes files in dir matching the glob patterns whose mtime is
+// at least maxAge old (maxAge <= 0 removes all matches) and returns the count.
+func removeTempFiles(logger *slog.Logger, dir string, maxAge time.Duration, patterns ...string) int {
+	cutoff := time.Now().Add(-maxAge)
+	removed := 0
+	for _, pattern := range patterns {
+		matches, err := filepath.Glob(filepath.Join(dir, pattern))
+		if err != nil {
+			logger.Warn("blobstore: globbing stale temp files failed", "pattern", pattern, "error", err)
+			continue
+		}
+		for _, m := range matches {
+			if maxAge > 0 {
+				fi, err := os.Stat(m)
+				if err != nil || fi.ModTime().After(cutoff) {
+					continue
+				}
+			}
+			if err := os.Remove(m); err != nil {
+				logger.Warn("blobstore: removing stale temp file failed", "path", m, "error", err)
+				continue
+			}
+			logger.Info("blobstore: removed stale temp file", "path", m)
+			removed++
+		}
+	}
+	return removed
 }
 
 func (s *Store) Put(_ context.Context, r io.Reader, expectedDigest string) (digest string, size int64, err error) {
@@ -200,11 +268,45 @@ func (s *Store) Delete(_ context.Context, digest string) error {
 	return nil
 }
 
+// DeleteIfOlder moves the file aside before inspecting it: a concurrent Put
+// renames a new file onto the final path, so inspecting the moved inode tells us
+// whether we are holding the old orphan or a fresh upload. A fresh one is put
+// back; blobs are content-addressed, so restoring over a racing Put is harmless.
+func (s *Store) DeleteIfOlder(ctx context.Context, digest string, cutoff time.Time) (bool, error) {
+	if cutoff.IsZero() {
+		return true, s.Delete(ctx, digest)
+	}
+	path, err := s.pathForDigest(digest)
+	if err != nil {
+		return false, err
+	}
+	trash := filepath.Join(s.root, ".trash-"+strings.TrimPrefix(digest, "sha256:"))
+	if err := os.Rename(path, trash); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, fmt.Errorf("moving blob aside: %w", err)
+	}
+	fi, err := os.Stat(trash)
+	if err != nil {
+		return false, fmt.Errorf("statting moved blob: %w", err)
+	}
+	if fi.ModTime().After(cutoff) {
+		if err := os.Rename(trash, path); err != nil {
+			return false, fmt.Errorf("restoring recently modified blob: %w", err)
+		}
+		return false, nil
+	}
+	if err := os.Remove(trash); err != nil {
+		return false, fmt.Errorf("deleting blob: %w", err)
+	}
+	return true, nil
+}
+
 var hexDigestRe = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
 func (s *Store) ListDigests(_ context.Context) ([]string, error) {
 	var digests []string
-	var errs []error
 
 	subdirs, err := os.ReadDir(s.root)
 	if err != nil {
@@ -216,7 +318,7 @@ func (s *Store) ListDigests(_ context.Context) ([]string, error) {
 		}
 		entries, err := os.ReadDir(filepath.Join(s.root, subdir.Name()))
 		if err != nil {
-			errs = append(errs, fmt.Errorf("reading blob subdir %s: %w", subdir.Name(), err))
+			s.logger.Warn("blobstore: skipping unreadable blob subdir", "subdir", subdir.Name(), "error", err)
 			continue
 		}
 		for _, entry := range entries {
@@ -228,9 +330,6 @@ func (s *Store) ListDigests(_ context.Context) ([]string, error) {
 			}
 			digests = append(digests, "sha256:"+entry.Name())
 		}
-	}
-	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
 	}
 	return digests, nil
 }

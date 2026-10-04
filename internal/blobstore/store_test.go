@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -143,4 +144,115 @@ func TestNewRemovesStaleTempFiles(t *testing.T) {
 	require.True(t, os.IsNotExist(err), "stale temp file should be removed")
 	_, err = os.Stat(keep)
 	require.NoError(t, err, "committed blob must survive")
+}
+
+func TestListDigestsSkipsUnreadableShard(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("permission checks don't apply to root")
+	}
+	s := testStore(t)
+
+	good, _, err := s.Put(ctx, bytes.NewReader([]byte("good")), "")
+	require.NoError(t, err)
+	bad, _, err := s.Put(ctx, bytes.NewReader([]byte("bad")), "")
+	require.NoError(t, err)
+
+	badShard := filepath.Join(s.root, bad[len("sha256:"):][:2])
+	require.NoError(t, os.Chmod(badShard, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(badShard, 0o700) }) //nolint:gosec // directory needs the execute bit restored for TempDir cleanup
+
+	digests, err := s.ListDigests(ctx)
+	require.NoError(t, err)
+	require.Contains(t, digests, good)
+	require.NotContains(t, digests, bad)
+}
+
+func TestDeleteIfOlder(t *testing.T) {
+	s := testStore(t)
+	digest, _, err := s.Put(ctx, bytes.NewReader([]byte("orphan")), "")
+	require.NoError(t, err)
+	path, err := s.pathForDigest(digest)
+	require.NoError(t, err)
+
+	t.Run("fresh blob is kept", func(t *testing.T) {
+		deleted, err := s.DeleteIfOlder(ctx, digest, time.Now().Add(-time.Hour))
+		require.NoError(t, err)
+		require.False(t, deleted)
+		mustExist(t, s, digest)
+		entries, err := filepath.Glob(filepath.Join(s.root, ".trash-*"))
+		require.NoError(t, err)
+		require.Empty(t, entries, "no trash left behind")
+	})
+
+	t.Run("old blob is deleted", func(t *testing.T) {
+		old := time.Now().Add(-2 * time.Hour)
+		require.NoError(t, os.Chtimes(path, old, old))
+		deleted, err := s.DeleteIfOlder(ctx, digest, time.Now().Add(-time.Hour))
+		require.NoError(t, err)
+		require.True(t, deleted)
+		mustNotExist(t, s, digest)
+	})
+
+	t.Run("missing blob is not an error", func(t *testing.T) {
+		deleted, err := s.DeleteIfOlder(ctx, digest, time.Now())
+		require.NoError(t, err)
+		require.False(t, deleted)
+	})
+
+	t.Run("zero cutoff deletes unconditionally", func(t *testing.T) {
+		d, _, err := s.Put(ctx, bytes.NewReader([]byte("fresh")), "")
+		require.NoError(t, err)
+		deleted, err := s.DeleteIfOlder(ctx, d, time.Time{})
+		require.NoError(t, err)
+		require.True(t, deleted)
+		mustNotExist(t, s, d)
+	})
+}
+
+func TestCleanStaleTempKeepsInFlightFiles(t *testing.T) {
+	s := testStore(t)
+	stale := filepath.Join(s.root, ".upload-stale")
+	fresh := filepath.Join(s.root, ".upload-fresh")
+	require.NoError(t, os.WriteFile(stale, []byte("x"), 0o600))
+	require.NoError(t, os.WriteFile(fresh, []byte("x"), 0o600))
+	old := time.Now().Add(-2 * time.Hour)
+	require.NoError(t, os.Chtimes(stale, old, old))
+
+	n, err := s.CleanStaleTemp(ctx, time.Hour)
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+	_, err = os.Stat(stale)
+	require.True(t, os.IsNotExist(err))
+	_, err = os.Stat(fresh)
+	require.NoError(t, err, "an in-flight upload must survive")
+}
+
+func TestRecoverTrashRestoresInterruptedDelete(t *testing.T) {
+	s := testStore(t)
+	digest, _, err := s.Put(ctx, bytes.NewReader([]byte("interrupted")), "")
+	require.NoError(t, err)
+	path, err := s.pathForDigest(digest)
+	require.NoError(t, err)
+	hash := digest[len("sha256:"):]
+	trash := filepath.Join(s.root, ".trash-"+hash)
+
+	// A crash after the move-aside leaves the blob only under its trash name.
+	require.NoError(t, os.Rename(path, trash))
+	mustNotExist(t, s, digest)
+
+	n, err := s.CleanStaleTemp(ctx, time.Hour)
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+	mustExist(t, s, digest)
+	_, err = os.Stat(trash)
+	require.True(t, os.IsNotExist(err))
+
+	// A trash file shadowed by a newer copy is just discarded.
+	require.NoError(t, os.WriteFile(trash, []byte("interrupted"), 0o600))
+	n, err = s.CleanStaleTemp(ctx, time.Hour)
+	require.NoError(t, err)
+	require.Zero(t, n)
+	mustExist(t, s, digest)
+	_, err = os.Stat(trash)
+	require.True(t, os.IsNotExist(err))
 }

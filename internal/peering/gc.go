@@ -234,6 +234,7 @@ func (gc *GarbageCollector) collect(ctx context.Context) {
 	gc.cleanupStalePeerBlobs(ctx)
 	gc.cleanupOrphanedBlobMetadata(ctx)
 	gc.cleanupOrphanedBlobFiles(ctx)
+	gc.cleanupStaleTempFiles(ctx)
 	gc.reconcileBlobStorageDrift(ctx)
 	gc.pruneDeletedManifests(ctx)
 
@@ -554,11 +555,18 @@ func (gc *GarbageCollector) cleanupOrphanedBlobFiles(ctx context.Context) {
 				continue
 			}
 		}
-		if err := gc.blobs.Delete(ctx, digest); err != nil {
+		var cutoff time.Time
+		if gc.cfg.BlobGCGracePeriod > 0 {
+			cutoff = graceCutoff
+		}
+		deleted, err := gc.blobs.DeleteIfOlder(ctx, digest, cutoff)
+		if err != nil {
 			gc.logger.Warn("gc: failed to delete orphaned blob file", "digest", digest, "error", err)
 			continue
 		}
-		removed++
+		if deleted {
+			removed++
+		}
 	}
 
 	if removed > 0 {
@@ -568,6 +576,23 @@ func (gc *GarbageCollector) cleanupOrphanedBlobFiles(ctx context.Context) {
 	if repaired > 0 {
 		metrics.GCBlobRowsRepaired.Add(float64(repaired))
 		gc.logger.Info("gc: repaired blobs rows from disk-only state", "count", repaired)
+	}
+}
+
+// cleanupStaleTempFiles removes upload staging files orphaned by a crashed Put
+// while the server is still running; startup alone would leave them until restart.
+func (gc *GarbageCollector) cleanupStaleTempFiles(ctx context.Context) {
+	maxAge := gc.cfg.BlobGCGracePeriod
+	if maxAge <= 0 {
+		maxAge = time.Hour
+	}
+	n, err := gc.blobs.CleanStaleTemp(ctx, maxAge)
+	if err != nil {
+		gc.logger.Warn("gc: failed to clean stale temp files", "error", err)
+		return
+	}
+	if n > 0 {
+		gc.logger.Info("gc: removed stale upload temp files", "count", n)
 	}
 }
 
