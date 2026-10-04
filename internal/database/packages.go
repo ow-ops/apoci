@@ -18,6 +18,10 @@ var ErrPackageOwnerMismatch = errors.New("package is owned by another actor")
 // upload sessions — a push is mid-flight and the delete must not race it.
 var ErrRepositoryBusy = errors.New("repository has open upload sessions")
 
+// ErrBlobMissing means a required local blob row vanished (e.g. reaped by GC)
+// between manifest validation and the manifest write.
+var ErrBlobMissing = errors.New("referenced blob missing")
+
 // ErrRepositoryGone means the parent packages row vanished between the push
 // path's transactions (a repo-level delete won the race). Failing loudly here
 // is what prevents a silently-lost push: the client retries, the retry
@@ -350,6 +354,9 @@ type BlobRef struct {
 	Digest    string
 	Size      int64
 	MediaType *string
+	// RequireLocal makes the manifest write fail with ErrBlobMissing unless a
+	// stored_locally blobs row exists in the same transaction.
+	RequireLocal bool
 }
 
 func (db *DB) PutBlobReferences(ctx context.Context, versionID int64, refs []BlobRef) error {
@@ -365,6 +372,17 @@ func putBlobReferences(ctx context.Context, idb bun.IDB, versionID int64, refs [
 	for _, r := range refs {
 		if r.Digest == "" {
 			continue
+		}
+		if r.RequireLocal {
+			var ok bool
+			if err := idb.NewRaw(
+				"SELECT EXISTS(SELECT 1 FROM blobs WHERE digest = ? AND stored_locally)", r.Digest,
+			).Scan(ctx, &ok); err != nil {
+				return fmt.Errorf("checking blob %s: %w", r.Digest, err)
+			}
+			if !ok {
+				return fmt.Errorf("%w: %s", ErrBlobMissing, r.Digest)
+			}
 		}
 		if _, err := idb.NewRaw(
 			`INSERT INTO package_files (version_id, filename, blob_digest, size_bytes, content_type)

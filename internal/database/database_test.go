@@ -435,6 +435,44 @@ func TestPutBlobLocalRestoreRefreshesCreatedAt(t *testing.T) {
 	require.NotContains(t, fresh, "sha256:refresh", "re-upload must restart the grace period")
 }
 
+func putManifestWithLayer(t *testing.T, db *DB, layerDigest string, requireLocal bool) error {
+	t.Helper()
+	ctx := context.Background()
+	repo, err := db.GetOrCreateRepository(ctx, "test/layers", testAliceActor)
+	require.NoError(t, err)
+	m := &Manifest{RepositoryID: repo.ID, Digest: "sha256:manifest-" + layerDigest, MediaType: testMediaType, SizeBytes: 1, Content: []byte("{}")}
+	return db.PutManifestWithLayers(ctx, m, []BlobRef{{Digest: layerDigest, Size: 1, RequireLocal: requireLocal}})
+}
+
+func TestDeleteBlobKeepsReferencedBlob(t *testing.T) {
+	db := testDB(t)
+	ctx := context.Background()
+
+	require.NoError(t, db.PutBlob(ctx, "sha256:referenced", 1, nil, true))
+	require.NoError(t, putManifestWithLayer(t, db, "sha256:referenced", false))
+
+	// GC lists orphans, then a manifest commits before the row is deleted.
+	require.NoError(t, db.DeleteBlob(ctx, "sha256:referenced"))
+
+	blob, err := db.GetBlob(ctx, "sha256:referenced")
+	require.NoError(t, err)
+	require.NotNil(t, blob, "a blob referenced by a manifest must not lose its row")
+}
+
+func TestPutManifestWithLayersRejectsMissingLocalBlob(t *testing.T) {
+	db := testDB(t)
+	ctx := context.Background()
+
+	err := putManifestWithLayer(t, db, "sha256:gone", true)
+	require.ErrorIs(t, err, ErrBlobMissing)
+
+	require.NoError(t, db.PutBlob(ctx, "sha256:remote", 1, nil, false))
+	require.ErrorIs(t, putManifestWithLayer(t, db, "sha256:remote", true), ErrBlobMissing, "non-local rows don't satisfy a local requirement")
+
+	require.NoError(t, db.PutBlob(ctx, "sha256:here", 1, nil, true))
+	require.NoError(t, putManifestWithLayer(t, db, "sha256:here", true))
+}
+
 func TestUploadSessionCRUD(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()

@@ -120,8 +120,14 @@ func (db *DB) SetBlobStoredLocally(ctx context.Context, digest string, stored bo
 	return nil
 }
 
+// DeleteBlob is a no-op while a manifest still references the digest: GC picks
+// orphans in one statement and deletes in another, and a manifest can commit in
+// between.
 func (db *DB) DeleteBlob(ctx context.Context, digest string) error {
-	_, err := db.bun.NewRaw("DELETE FROM blobs WHERE digest = ?", digest).Exec(ctx)
+	_, err := db.bun.NewRaw(
+		`DELETE FROM blobs WHERE digest = ?
+		 AND NOT EXISTS (SELECT 1 FROM package_files WHERE blob_digest = ?)`,
+		digest, digest).Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("deleting blob: %w", err)
 	}

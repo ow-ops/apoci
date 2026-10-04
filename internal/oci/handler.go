@@ -1307,8 +1307,16 @@ func (r *Registry) pushManifest(ctx context.Context, repo string, tag string, co
 	// sweep can never observe a stored manifest whose layer references are still
 	// missing.
 	refs := append([]database.BlobRef(nil), meta.layers...)
+	// Re-assert the layers validated above inside the write transaction: GC may
+	// have reaped an aged orphan's row since.
+	for i := range refs {
+		refs[i].RequireLocal = validate.Digest(refs[i].Digest) == nil
+	}
 	refs = append(refs, meta.children...)
 	if err := r.db.PutManifestWithLayers(ctx, m, refs); err != nil {
+		if errors.Is(err, database.ErrBlobMissing) {
+			return ociregistry.Descriptor{}, fmt.Errorf("%w: %w", ociregistry.ErrBlobUnknown, err)
+		}
 		return ociregistry.Descriptor{}, fmt.Errorf("storing manifest: %w", err)
 	}
 
