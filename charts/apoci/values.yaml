@@ -1,7 +1,7 @@
 # Default values for apoci.
 
 image:
-  repository: git.erwanleboucher.dev/eleboucher/apoci
+  repository: git.ow-ops.eu/ow-ops/apoci
   pullPolicy: IfNotPresent
   # Overrides the image tag. Defaults to the chart appVersion.
   tag: ""

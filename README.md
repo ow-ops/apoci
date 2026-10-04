@@ -20,7 +20,7 @@ A federated, self-hostable container and package registry. Each node is a single
 ## Install
 
 ```bash
-go install git.erwanleboucher.dev/eleboucher/apoci/cmd/apoci@latest
+go install git.ow-ops.eu/ow-ops/apoci/cmd/apoci@latest
 ```
 
 Or build from source:

@@ -4,9 +4,9 @@ description: Federated, self-hostable multi-format (OCI, npm, Cargo, PyPI) regis
 type: application
 version: 0.1.0
 appVersion: "0.0.38"
-home: https://git.erwanleboucher.dev/eleboucher/apoci
+home: https://git.ow-ops.eu/ow-ops/apoci
 sources:
-  - https://git.erwanleboucher.dev/eleboucher/apoci
+  - https://git.ow-ops.eu/ow-ops/apoci
 keywords:
   - oci
   - registry

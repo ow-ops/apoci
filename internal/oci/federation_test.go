@@ -9,11 +9,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/activitypub"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/blobstore"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/config"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/oci"
+	"git.ow-ops.eu/ow-ops/apoci/internal/activitypub"
+	"git.ow-ops.eu/ow-ops/apoci/internal/blobstore"
+	"git.ow-ops.eu/ow-ops/apoci/internal/config"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/oci"
 )
 
 func nopLog() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }

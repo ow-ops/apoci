@@ -13,8 +13,8 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/metrics"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/version"
+	"git.ow-ops.eu/ow-ops/apoci/internal/metrics"
+	"git.ow-ops.eu/ow-ops/apoci/internal/version"
 )
 
 // pypiIndexMaxBytes bounds a simple-index metadata response. Project indexes

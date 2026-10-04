@@ -35,7 +35,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_database.Actor"
+                                "$ref": "#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_database.Actor"
                             }
                         }
                     },
@@ -68,7 +68,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_database.Actor"
+                                "$ref": "#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_database.Actor"
                             }
                         }
                     },
@@ -326,7 +326,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_database.Actor"
+                                "$ref": "#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_database.Actor"
                             }
                         }
                     },
@@ -359,7 +359,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_database.FollowRequest"
+                                "$ref": "#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_database.FollowRequest"
                             }
                         }
                     },
@@ -493,7 +493,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_admin.IdentityResponse"
+                            "$ref": "#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_admin.IdentityResponse"
                         }
                     },
                     "500": {
@@ -525,7 +525,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_admin.ImageEntry"
+                                "$ref": "#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_admin.ImageEntry"
                             }
                         }
                     },
@@ -822,7 +822,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_admin.UploadSessionEntry"
+                                "$ref": "#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_admin.UploadSessionEntry"
                             }
                         }
                     },
@@ -880,7 +880,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "git_erwanleboucher_dev_eleboucher_apoci_internal_admin.IdentityResponse": {
+        "git_ow-ops_eu_ow-ops_apoci_internal_admin.IdentityResponse": {
             "type": "object",
             "properties": {
                 "accountDomain": {
@@ -906,7 +906,7 @@ const docTemplate = `{
                 }
             }
         },
-        "git_erwanleboucher_dev_eleboucher_apoci_internal_admin.ImageEntry": {
+        "git_ow-ops_eu_ow-ops_apoci_internal_admin.ImageEntry": {
             "type": "object",
             "properties": {
                 "name": {
@@ -926,7 +926,7 @@ const docTemplate = `{
                 }
             }
         },
-        "git_erwanleboucher_dev_eleboucher_apoci_internal_admin.UploadSessionEntry": {
+        "git_ow-ops_eu_ow-ops_apoci_internal_admin.UploadSessionEntry": {
             "type": "object",
             "properties": {
                 "bytes_received": {
@@ -946,7 +946,7 @@ const docTemplate = `{
                 }
             }
         },
-        "git_erwanleboucher_dev_eleboucher_apoci_internal_database.Actor": {
+        "git_ow-ops_eu_ow-ops_apoci_internal_database.Actor": {
             "type": "object",
             "properties": {
                 "actor_url": {
@@ -1003,7 +1003,7 @@ const docTemplate = `{
                 }
             }
         },
-        "git_erwanleboucher_dev_eleboucher_apoci_internal_database.FollowRequest": {
+        "git_ow-ops_eu_ow-ops_apoci_internal_database.FollowRequest": {
             "type": "object",
             "properties": {
                 "actorURL": {

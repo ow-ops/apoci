@@ -15,18 +15,18 @@ jobs:
       - name: Compute build timestamp
         id: build-meta
         run: echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-      - name: Login to git.erwanleboucher.dev
+      - name: Login to git.ow-ops.eu
         uses: https://data.forgejo.org/docker/login-action@v4
         with:
-          registry: git.erwanleboucher.dev
-          username: ${{ vars.USERNAME }}
-          password: ${{ secrets.OWNER_PACKAGE_SECRET }}
+          registry: git.ow-ops.eu
+          username: owl-bot
+          password: ${{ secrets.FORGE_TOKEN }}
       - name: Compute image metadata
         id: meta
         uses: https://data.forgejo.org/docker/metadata-action@v6
         with:
           images: |
-            git.erwanleboucher.dev/${{ vars.USERNAME }}/apoci
+            git.ow-ops.eu/ow-ops/apoci
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=long
@@ -35,7 +35,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=apoci
             org.opencontainers.image.description=apoci — federated, self-hostable multi-format (OCI, npm, Cargo, PyPI) registry that publishes artifacts as an ActivityPub actor
-            org.opencontainers.image.documentation=https://git.erwanleboucher.dev/eleboucher/apoci/src/branch/main/README.md
+            org.opencontainers.image.documentation=https://git.ow-ops.eu/ow-ops/apoci/src/branch/main/README.md
             org.opencontainers.image.authors=Erwan Leboucher <erwanleboucher@gmail.com>
             org.opencontainers.image.vendor=Erwan Leboucher
       - name: Build and push

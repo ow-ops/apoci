@@ -19,7 +19,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/metrics"
+	"git.ow-ops.eu/ow-ops/apoci/internal/metrics"
 )
 
 type responseWriter struct {

@@ -20,7 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/validate"
+	"git.ow-ops.eu/ow-ops/apoci/internal/validate"
 )
 
 // S3Config holds parameters for connecting to S3 or an S3-compatible store.

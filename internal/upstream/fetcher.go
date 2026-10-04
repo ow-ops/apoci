@@ -15,10 +15,10 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/config"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/metrics"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/peering"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/version"
+	"git.ow-ops.eu/ow-ops/apoci/internal/config"
+	"git.ow-ops.eu/ow-ops/apoci/internal/metrics"
+	"git.ow-ops.eu/ow-ops/apoci/internal/peering"
+	"git.ow-ops.eu/ow-ops/apoci/internal/version"
 )
 
 const (

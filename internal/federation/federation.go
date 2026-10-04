@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/activitypub"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/activitypub"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
 )
 
 type FederationRepository interface {

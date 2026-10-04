@@ -14,8 +14,8 @@ import (
 	"cuelabs.dev/go/oci/ociregistry"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/queue"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/util"
+	"git.ow-ops.eu/ow-ops/apoci/internal/queue"
+	"git.ow-ops.eu/ow-ops/apoci/internal/util"
 )
 
 // Source reads local manifests and blobs to replicate. *oci.Registry satisfies it.

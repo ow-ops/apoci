@@ -14,8 +14,8 @@ import (
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/blobstore"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/blobstore"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
 )
 
 const (

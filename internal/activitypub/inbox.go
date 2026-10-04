@@ -18,9 +18,9 @@ import (
 	"github.com/jellydator/ttlcache/v3"
 	"golang.org/x/time/rate"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/metrics"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/validate"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/metrics"
+	"git.ow-ops.eu/ow-ops/apoci/internal/validate"
 )
 
 type Notifier interface {

@@ -8,8 +8,8 @@ import (
 
 	"codeberg.org/gruf/go-runners"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/notify"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/util"
+	"git.ow-ops.eu/ow-ops/apoci/internal/notify"
+	"git.ow-ops.eu/ow-ops/apoci/internal/util"
 )
 
 // PeerRecord is the minimal peer information needed for health checks.

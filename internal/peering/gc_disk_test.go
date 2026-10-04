@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/notify"
+	"git.ow-ops.eu/ow-ops/apoci/internal/notify"
 )
 
 const testDiskPath = "/some/path"

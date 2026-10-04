@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/config"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/config"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
 )
 
 const exampleActorURL = "https://example.com/ap/actor"

@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/config"
+	"git.ow-ops.eu/ow-ops/apoci/internal/config"
 )
 
 const (

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/oci"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/oci"
 )
 
 type ResolverRepository interface {

@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/validate"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/version"
+	"git.ow-ops.eu/ow-ops/apoci/internal/validate"
+	"git.ow-ops.eu/ow-ops/apoci/internal/version"
 )
 
 var httpClient = &http.Client{

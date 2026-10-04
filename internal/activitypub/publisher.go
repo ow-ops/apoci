@@ -12,10 +12,10 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/metrics"
+	"git.ow-ops.eu/ow-ops/apoci/internal/metrics"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/util"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/util"
 )
 
 // pubContext lets enqueueToFollowers apply per-follower tag-glob filters.

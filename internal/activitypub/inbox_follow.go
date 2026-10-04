@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/notify"
+	"git.ow-ops.eu/ow-ops/apoci/internal/notify"
 )
 
 // processFollow handles incoming Follow requests.

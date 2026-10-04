@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/validate"
+	"git.ow-ops.eu/ow-ops/apoci/internal/validate"
 )
 
 const testActorURL = "https://test.example.com/ap/actor"

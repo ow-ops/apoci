@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"time"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/version"
+	"git.ow-ops.eu/ow-ops/apoci/internal/version"
 )
 
 type ImageEntry struct {

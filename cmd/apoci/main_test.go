@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/config"
+	"git.ow-ops.eu/ow-ops/apoci/internal/config"
 )
 
 func TestWarnGeneratedTokensEmitsOnePerPath(t *testing.T) {

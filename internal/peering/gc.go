@@ -13,11 +13,11 @@ import (
 
 	"codeberg.org/gruf/go-runners"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/blobstore"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/metrics"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/notify"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/util"
+	"git.ow-ops.eu/ow-ops/apoci/internal/blobstore"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/metrics"
+	"git.ow-ops.eu/ow-ops/apoci/internal/notify"
+	"git.ow-ops.eu/ow-ops/apoci/internal/util"
 )
 
 type GCRepository interface {

@@ -17,8 +17,8 @@ import (
 	gtnuget "gitea.dev/modules/packages/nuget"
 	"github.com/go-chi/chi/v5"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/blobstore"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/blobstore"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
 )
 
 const (

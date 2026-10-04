@@ -13,9 +13,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/activitypub"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/federation"
+	"git.ow-ops.eu/ow-ops/apoci/internal/activitypub"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/federation"
 )
 
 const testToken = "test-token"

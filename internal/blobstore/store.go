@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/validate"
+	"git.ow-ops.eu/ow-ops/apoci/internal/validate"
 )
 
 // ErrBlobNotFound is returned by Open when the requested blob does not exist.

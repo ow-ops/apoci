@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"net/url"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/activitypub"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/registry/pkgfed"
+	"git.ow-ops.eu/ow-ops/apoci/internal/activitypub"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/registry/pkgfed"
 )
 
 const apTypeFile = "PypiFile"

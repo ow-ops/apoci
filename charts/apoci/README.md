@@ -1,6 +1,6 @@
 # apoci Helm chart
 
-Deploys [apoci](https://git.erwanleboucher.dev/eleboucher/apoci) — a federated,
+Deploys [apoci](https://git.ow-ops.eu/ow-ops/apoci) — a federated,
 self-hostable multi-format (OCI, npm, Cargo, PyPI) registry that publishes
 artifacts as an ActivityPub actor.
 
@@ -42,7 +42,7 @@ them in the data volume (read them from `/apoci/storage/{registry,admin}.token`)
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `image.repository` | `git.erwanleboucher.dev/eleboucher/apoci` | Image repo |
+| `image.repository` | `git.ow-ops.eu/ow-ops/apoci` | Image repo |
 | `image.tag` | `""` (chart appVersion) | Image tag |
 | `config` | see `values.yaml` | Rendered into `apoci.yaml` |
 | `auth.registryToken` / `auth.adminToken` | `""` | Tokens; empty = auto-generate |

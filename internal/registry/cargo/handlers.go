@@ -14,8 +14,8 @@ import (
 
 	gtcargo "gitea.dev/modules/packages/cargo"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/blobstore"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/blobstore"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
 )
 
 const (

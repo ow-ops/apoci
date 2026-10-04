@@ -1,4 +1,4 @@
-module git.erwanleboucher.dev/eleboucher/apoci
+module git.ow-ops.eu/ow-ops/apoci
 
 go 1.27
 

@@ -1,6 +1,6 @@
 basePath: /api/admin
 definitions:
-  git_erwanleboucher_dev_eleboucher_apoci_internal_admin.IdentityResponse:
+  git_ow-ops_eu_ow-ops_apoci_internal_admin.IdentityResponse:
     properties:
       accountDomain:
         type: string
@@ -17,7 +17,7 @@ definitions:
       publicKey:
         type: string
     type: object
-  git_erwanleboucher_dev_eleboucher_apoci_internal_admin.ImageEntry:
+  git_ow-ops_eu_ow-ops_apoci_internal_admin.ImageEntry:
     properties:
       name:
         type: string
@@ -30,7 +30,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  git_erwanleboucher_dev_eleboucher_apoci_internal_admin.UploadSessionEntry:
+  git_ow-ops_eu_ow-ops_apoci_internal_admin.UploadSessionEntry:
     properties:
       bytes_received:
         type: integer
@@ -43,7 +43,7 @@ definitions:
       uuid:
         type: string
     type: object
-  git_erwanleboucher_dev_eleboucher_apoci_internal_database.Actor:
+  git_ow-ops_eu_ow-ops_apoci_internal_database.Actor:
     properties:
       actor_url:
         type: string
@@ -82,7 +82,7 @@ definitions:
         description: 'Outbound: we follow them'
         type: boolean
     type: object
-  git_erwanleboucher_dev_eleboucher_apoci_internal_database.FollowRequest:
+  git_ow-ops_eu_ow-ops_apoci_internal_database.FollowRequest:
     properties:
       actorURL:
         type: string
@@ -148,7 +148,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_database.Actor'
+              $ref: '#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_database.Actor'
             type: array
         "500":
           description: internal error
@@ -202,7 +202,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_database.Actor'
+              $ref: '#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_database.Actor'
             type: array
         "500":
           description: internal error
@@ -333,7 +333,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_database.Actor'
+              $ref: '#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_database.Actor'
             type: array
         "500":
           description: internal error
@@ -353,7 +353,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_database.FollowRequest'
+              $ref: '#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_database.FollowRequest'
             type: array
         "500":
           description: internal error
@@ -435,7 +435,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_admin.IdentityResponse'
+            $ref: '#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_admin.IdentityResponse'
         "500":
           description: internal error
           schema:
@@ -454,7 +454,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_admin.ImageEntry'
+              $ref: '#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_admin.ImageEntry'
             type: array
         "500":
           description: internal error
@@ -673,7 +673,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/git_erwanleboucher_dev_eleboucher_apoci_internal_admin.UploadSessionEntry'
+              $ref: '#/definitions/git_ow-ops_eu_ow-ops_apoci_internal_admin.UploadSessionEntry'
             type: array
         "500":
           description: internal error

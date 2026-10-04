@@ -11,9 +11,9 @@ import (
 	"codeberg.org/gruf/go-runners"
 	"github.com/sourcegraph/conc/pool"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/metrics"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/util"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/metrics"
+	"git.ow-ops.eu/ow-ops/apoci/internal/util"
 )
 
 const (

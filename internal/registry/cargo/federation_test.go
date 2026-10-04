@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/blobstore"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/peering"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/registry/pkgfed/pkgfedtest"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/validate"
+	"git.ow-ops.eu/ow-ops/apoci/internal/blobstore"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/peering"
+	"git.ow-ops.eu/ow-ops/apoci/internal/registry/pkgfed/pkgfedtest"
+	"git.ow-ops.eu/ow-ops/apoci/internal/validate"
 )
 
 func newTestServerWithPublisher(t *testing.T, p *pkgfedtest.StubPublisher) *httptest.Server {

@@ -11,9 +11,9 @@ import (
 	"golang.org/x/mod/module"
 	"golang.org/x/sync/singleflight"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/metrics"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/validate"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/version"
+	"git.ow-ops.eu/ow-ops/apoci/internal/metrics"
+	"git.ow-ops.eu/ow-ops/apoci/internal/validate"
+	"git.ow-ops.eu/ow-ops/apoci/internal/version"
 )
 
 // newHTTPClient builds the HTTP client shared by the OCI and goproxy fetchers:

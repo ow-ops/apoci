@@ -9,9 +9,9 @@ import (
 
 	"codeberg.org/gruf/go-runners"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/metrics"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/queue"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/util"
+	"git.ow-ops.eu/ow-ops/apoci/internal/metrics"
+	"git.ow-ops.eu/ow-ops/apoci/internal/queue"
+	"git.ow-ops.eu/ow-ops/apoci/internal/util"
 )
 
 const (

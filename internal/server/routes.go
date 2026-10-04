@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/server/ui"
+	"git.ow-ops.eu/ow-ops/apoci/internal/server/ui"
 )
 
 func (s *Server) routes() http.Handler {

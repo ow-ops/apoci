@@ -8,7 +8,7 @@ import (
 
 	"codeberg.org/gruf/go-runners"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/util"
+	"git.ow-ops.eu/ow-ops/apoci/internal/util"
 )
 
 // PeriodicTask defines a recurring background task.

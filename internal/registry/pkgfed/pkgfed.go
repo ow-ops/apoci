@@ -9,9 +9,9 @@ import (
 	"math"
 	"net/http"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/activitypub"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/validate"
+	"git.ow-ops.eu/ow-ops/apoci/internal/activitypub"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/validate"
 )
 
 // PeerBlobFinder locates peers that hold a given blob digest.

@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/database"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/scanner"
-	"git.erwanleboucher.dev/eleboucher/apoci/internal/server/ui"
+	"git.ow-ops.eu/ow-ops/apoci/internal/database"
+	"git.ow-ops.eu/ow-ops/apoci/internal/scanner"
+	"git.ow-ops.eu/ow-ops/apoci/internal/server/ui"
 )
 
 const digestDisplayLen = 19 // sha256:abc... truncated for display
