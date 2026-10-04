@@ -1094,6 +1094,12 @@ func (r *Registry) mountBlob(ctx context.Context, fromRepo, toRepo string, diges
 		return ociregistry.Descriptor{}, ociregistry.ErrBlobUnknown
 	}
 
+	// Restart the orphan-GC grace period: until the manifest lands, the mounted
+	// blob has no package_files reference and GC could otherwise reclaim it.
+	if err := r.db.PutBlob(ctx, string(digest), blob.SizeBytes, blob.MediaType, true); err != nil {
+		return ociregistry.Descriptor{}, fmt.Errorf("refreshing mounted blob: %w", err)
+	}
+
 	mediaType := defaultMediaType
 	if blob.MediaType != nil {
 		mediaType = *blob.MediaType

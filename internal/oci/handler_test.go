@@ -1438,3 +1438,30 @@ func TestDeleteBlobDoesNotRemoveOtherReposBlob(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, blob)
 }
+
+func TestMountBlobProtectsAgedOrphanFromGC(t *testing.T) {
+	reg, _ := testRegistry(t)
+	ctx := context.Background()
+
+	blob := []byte("aged-orphan")
+	digest := godigest.FromBytes(blob)
+	_, err := reg.pushBlob(ctx, "test.example.com/test/src", ociregistry.Descriptor{Digest: digest, Size: int64(len(blob))}, bytes.NewReader(blob))
+	require.NoError(t, err)
+
+	db, ok := reg.db.(*database.DB)
+	require.True(t, ok)
+	_, err = db.ExecContext(ctx, "UPDATE blobs SET created_at = ? WHERE digest = ?", time.Now().Add(-48*time.Hour), string(digest))
+	require.NoError(t, err)
+
+	cutoff := time.Now().Add(-time.Hour)
+	orphans, err := db.OrphanedBlobs(ctx, 10, cutoff)
+	require.NoError(t, err)
+	require.Contains(t, orphans, string(digest))
+
+	_, err = reg.mountBlob(ctx, "test.example.com/test/src", "test.example.com/test/dst", digest)
+	require.NoError(t, err)
+
+	orphans, err = db.OrphanedBlobs(ctx, 10, cutoff)
+	require.NoError(t, err)
+	require.NotContains(t, orphans, string(digest), "mount must restart the GC grace period")
+}
