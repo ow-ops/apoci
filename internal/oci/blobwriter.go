@@ -20,8 +20,8 @@ import (
 type diskBlobWriter struct {
 	uuid    string
 	maxSize int64
-	// commit persists the staged content (read from the rewound temp file).
-	commit func(dig ociregistry.Digest, data io.Reader) (ociregistry.Descriptor, error)
+	// commit persists the staged content (the temp file, rewound to the start).
+	commit func(dig ociregistry.Digest, staged *os.File) (ociregistry.Descriptor, error)
 	// onDone runs once when the upload reaches a terminal state (committed or
 	// canceled), used to drop registry bookkeeping for any outcome.
 	onDone func()
@@ -133,7 +133,7 @@ func (w *diskBlobWriter) cleanup() {
 }
 
 // newDiskBlobWriter creates a staging file in dir. A random ID is generated when uuid is empty.
-func newDiskBlobWriter(dir, uuid string, maxSize int64, commit func(dig ociregistry.Digest, data io.Reader) (ociregistry.Descriptor, error)) (*diskBlobWriter, error) {
+func newDiskBlobWriter(dir, uuid string, maxSize int64, commit func(dig ociregistry.Digest, staged *os.File) (ociregistry.Descriptor, error)) (*diskBlobWriter, error) {
 	f, err := os.CreateTemp(dir, "upload-*")
 	if err != nil {
 		return nil, fmt.Errorf("creating upload staging file: %w", err)

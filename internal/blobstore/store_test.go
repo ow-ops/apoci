@@ -3,6 +3,9 @@ package blobstore
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -255,4 +258,38 @@ func TestRecoverTrashRestoresInterruptedDelete(t *testing.T) {
 	mustExist(t, s, digest)
 	_, err = os.Stat(trash)
 	require.True(t, os.IsNotExist(err))
+}
+
+func TestAdoptFileMovesStagedFileIntoStore(t *testing.T) {
+	s := testStore(t)
+	data := []byte("staged chunked upload")
+	digest := "sha256:" + hex.EncodeToString(sha256Sum(data))
+
+	staged := filepath.Join(t.TempDir(), "upload-1")
+	require.NoError(t, os.WriteFile(staged, data, 0o600))
+	old := time.Now().Add(-3 * time.Hour)
+	require.NoError(t, os.Chtimes(staged, old, old))
+
+	size, err := s.AdoptFile(ctx, staged, digest)
+	if errors.Is(err, ErrCrossDevice) {
+		t.Skip("temp dirs are on different filesystems")
+	}
+	require.NoError(t, err)
+	require.Equal(t, int64(len(data)), size)
+
+	_, err = os.Stat(staged)
+	require.True(t, os.IsNotExist(err), "staged file must be consumed")
+	mustExist(t, s, digest)
+
+	mtime, err := s.ModTime(ctx, digest)
+	require.NoError(t, err)
+	require.WithinDuration(t, time.Now(), mtime, time.Minute, "adopted blob needs a fresh mtime so GC's grace period applies")
+
+	_, err = s.AdoptFile(ctx, staged, "not-a-digest")
+	require.Error(t, err)
+}
+
+func sha256Sum(b []byte) []byte {
+	h := sha256.Sum256(b)
+	return h[:]
 }

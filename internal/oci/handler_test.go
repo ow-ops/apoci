@@ -1502,3 +1502,41 @@ func pushLayerManifest(t *testing.T, reg *Registry, repo string, layer godigest.
 	require.NoError(t, err)
 	return desc.Digest
 }
+
+func TestChunkedCommitAdoptsOrCopiesStagedFile(t *testing.T) {
+	cases := map[string]func(blobstore.BlobStore) blobstore.BlobStore{
+		"adopt by rename": func(b blobstore.BlobStore) blobstore.BlobStore { return b },
+		// Hiding AdoptFile forces the copy path used for S3 and cross-device staging.
+		"copy fallback": func(b blobstore.BlobStore) blobstore.BlobStore { return struct{ blobstore.BlobStore }{b} },
+	}
+	for name, wrap := range cases {
+		t.Run(name, func(t *testing.T) {
+			reg, _ := testRegistry(t)
+			reg.blobs = wrap(reg.blobs)
+			ctx := context.Background()
+
+			data := []byte("chunked-" + name)
+			digest := godigest.FromBytes(data)
+			w, err := reg.pushBlobChunked(ctx, "test.example.com/test/adopt", 0)
+			require.NoError(t, err)
+			_, err = w.Write(data)
+			require.NoError(t, err)
+			desc, err := w.Commit(digest)
+			require.NoError(t, err)
+			require.Equal(t, int64(len(data)), desc.Size)
+
+			f, size, err := reg.blobs.Open(ctx, string(digest))
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = f.Close() })
+			require.Equal(t, int64(len(data)), size)
+			got, err := io.ReadAll(f)
+			require.NoError(t, err)
+			require.Equal(t, data, got)
+
+			blob, err := reg.db.GetBlob(ctx, string(digest))
+			require.NoError(t, err)
+			require.NotNil(t, blob)
+			require.Empty(t, w.(*diskBlobWriter).Path(), "staging file must be released")
+		})
+	}
+}

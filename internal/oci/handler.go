@@ -1225,7 +1225,7 @@ func (r *Registry) newUploadWriter(repo, uuid string) (*diskBlobWriter, error) {
 		_ = r.db.DeleteUploadSession(delCtx, id)
 	}
 
-	w.commit = func(dig ociregistry.Digest, data io.Reader) (ociregistry.Descriptor, error) {
+	w.commit = func(dig ociregistry.Digest, staged *os.File) (ociregistry.Descriptor, error) {
 		r.uploadsMu.Lock()
 		delete(r.uploads, id)
 		r.uploadsMu.Unlock()
@@ -1235,7 +1235,7 @@ func (r *Registry) newUploadWriter(repo, uuid string) (*diskBlobWriter, error) {
 		commitCtx, commitCancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer commitCancel()
 
-		digestStr, size, err := r.blobs.Put(commitCtx, data, string(dig))
+		digestStr, size, err := r.storeStaged(commitCtx, staged, dig)
 		if err != nil {
 			return ociregistry.Descriptor{}, fmt.Errorf("storing chunked blob: %w", err)
 		}
@@ -1266,6 +1266,22 @@ func (r *Registry) newUploadWriter(repo, uuid string) (*diskBlobWriter, error) {
 	r.uploadsMu.Unlock()
 
 	return w, nil
+}
+
+// storeStaged persists a fully received, digest-verified staging file. A store
+// on the same filesystem takes the file over by rename; otherwise it is streamed
+// in (the file is already rewound).
+func (r *Registry) storeStaged(ctx context.Context, staged *os.File, dig ociregistry.Digest) (string, int64, error) {
+	if a, ok := r.blobs.(blobstore.FileAdopter); ok {
+		size, err := a.AdoptFile(ctx, staged.Name(), string(dig))
+		if err == nil {
+			return string(dig), size, nil
+		}
+		if !errors.Is(err, blobstore.ErrCrossDevice) {
+			return "", 0, err
+		}
+	}
+	return r.blobs.Put(ctx, staged, string(dig))
 }
 
 func (r *Registry) pushManifest(ctx context.Context, repo string, tag string, contents []byte, mediaType string) (ociregistry.Descriptor, error) {

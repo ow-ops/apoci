@@ -12,10 +12,25 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"git.ow-ops.eu/ow-ops/apoci/internal/validate"
 )
+
+// ErrCrossDevice is returned by AdoptFile when the source file lives on a
+// different filesystem than the store, so it cannot be renamed into place.
+var ErrCrossDevice = errors.New("source file is on a different filesystem")
+
+// FileAdopter is implemented by stores that can take ownership of an
+// already-verified file on local disk without copying it.
+type FileAdopter interface {
+	// AdoptFile moves the file at path into the store as the blob with the given
+	// digest and returns its size. The caller must already have verified that the
+	// content hashes to digest. On success path no longer exists; on error it is
+	// left in place. It returns ErrCrossDevice when a move is impossible.
+	AdoptFile(ctx context.Context, path, digest string) (int64, error)
+}
 
 // ErrBlobNotFound is returned by Open when the requested blob does not exist.
 var ErrBlobNotFound = errors.New("blob not found")
@@ -266,6 +281,36 @@ func (s *Store) Delete(_ context.Context, digest string) error {
 		return fmt.Errorf("deleting blob: %w", err)
 	}
 	return nil
+}
+
+// AdoptFile renames path into the blob tree. The mtime is reset first: the
+// staged file's mtime is that of its last chunk, possibly hours old, and an old
+// mtime on a not-yet-recorded blob would let GC's grace period treat it as an
+// orphan.
+func (s *Store) AdoptFile(_ context.Context, path, digest string) (int64, error) {
+	finalPath, err := s.pathForDigest(digest)
+	if err != nil {
+		return 0, err
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		return 0, fmt.Errorf("statting staged file: %w", err)
+	}
+	now := time.Now()
+	if err := os.Chtimes(path, now, now); err != nil {
+		return 0, fmt.Errorf("touching staged file: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(finalPath), 0o750); err != nil {
+		return 0, fmt.Errorf("creating blob subdirectory: %w", err)
+	}
+	if err := os.Rename(path, finalPath); err != nil {
+		if errors.Is(err, syscall.EXDEV) {
+			return 0, ErrCrossDevice
+		}
+		return 0, fmt.Errorf("moving staged file into store: %w", err)
+	}
+	s.logger.Debug("blob adopted", "digest", digest, "size", fi.Size())
+	return fi.Size(), nil
 }
 
 // DeleteIfOlder moves the file aside before inspecting it: a concurrent Put
