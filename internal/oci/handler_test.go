@@ -1,6 +1,7 @@
 package oci
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"cuelabs.dev/go/oci/ociregistry"
+	godigest "github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/require"
 
 	"git.ow-ops.eu/ow-ops/apoci/internal/blobstore"
@@ -1403,4 +1405,36 @@ func (m *loopGuardFetcher) FetchManifest(_ context.Context, _, _, _ string) ([]b
 	m.calls++
 	m.t.Fatalf("FetchManifest must not be invoked from getBlob; call #%d", m.calls)
 	return nil, "", nil
+}
+
+func TestDeleteBlobDoesNotRemoveOtherReposBlob(t *testing.T) {
+	reg, _ := testRegistry(t)
+	ctx := context.Background()
+	const repoA, repoB = "test.example.com/test/a", "test.example.com/test/b"
+
+	layer := []byte("layer-of-repo-b")
+	layerDigest := string(godigest.FromBytes(layer))
+	_, err := reg.pushBlob(ctx, repoB, ociregistry.Descriptor{Digest: ociregistry.Digest(layerDigest), Size: int64(len(layer))}, bytes.NewReader(layer))
+	require.NoError(t, err)
+
+	manifest := fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"digest":%q,"size":%d},"layers":[{"mediaType":"application/octet-stream","digest":%q,"size":%d}]}`,
+		layerDigest, len(layer), layerDigest, len(layer))
+	_, err = reg.pushManifest(ctx, repoB, "v1", []byte(manifest), "application/vnd.oci.image.manifest.v1+json")
+	require.NoError(t, err)
+
+	other := []byte("other")
+	_, err = reg.pushBlob(ctx, repoA, ociregistry.Descriptor{Digest: godigest.FromBytes(other), Size: int64(len(other))}, bytes.NewReader(other))
+	require.NoError(t, err)
+
+	err = reg.deleteBlob(ctx, repoA, ociregistry.Digest(layerDigest))
+	require.ErrorIs(t, err, ociregistry.ErrBlobUnknown)
+
+	require.NoError(t, reg.deleteBlob(ctx, repoB, ociregistry.Digest(layerDigest)))
+
+	exists, err := reg.blobs.Exists(ctx, layerDigest)
+	require.NoError(t, err)
+	require.True(t, exists, "referenced blob bytes must survive deleteBlob")
+	blob, err := reg.db.GetBlob(ctx, layerDigest)
+	require.NoError(t, err)
+	require.NotNil(t, blob)
 }

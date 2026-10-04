@@ -417,6 +417,24 @@ func TestBlobCRUD(t *testing.T) {
 	require.Nil(t, blob2, "expected nil after delete")
 }
 
+func TestPutBlobLocalRestoreRefreshesCreatedAt(t *testing.T) {
+	db := testDB(t)
+	ctx := context.Background()
+
+	require.NoError(t, db.PutBlob(ctx, "sha256:refresh", 1, nil, true))
+	_, err := db.bun.NewRaw("UPDATE blobs SET created_at = ? WHERE digest = ?", time.Now().Add(-48*time.Hour), "sha256:refresh").Exec(ctx)
+	require.NoError(t, err)
+
+	old, err := db.OrphanedBlobs(ctx, 10, time.Now().Add(-time.Hour))
+	require.NoError(t, err)
+	require.Contains(t, old, "sha256:refresh")
+
+	require.NoError(t, db.PutBlob(ctx, "sha256:refresh", 1, nil, true))
+	fresh, err := db.OrphanedBlobs(ctx, 10, time.Now().Add(-time.Hour))
+	require.NoError(t, err)
+	require.NotContains(t, fresh, "sha256:refresh", "re-upload must restart the grace period")
+}
+
 func TestUploadSessionCRUD(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()

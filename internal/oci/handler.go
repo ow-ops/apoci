@@ -18,7 +18,6 @@ import (
 	"time"
 
 	godigest "github.com/opencontainers/go-digest"
-	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"cuelabs.dev/go/oci/ociregistry"
@@ -1388,9 +1387,9 @@ func (r *Registry) AttachReferrer(ctx context.Context, repo, subjectDigest, arti
 	}
 
 	manifest := ocispec.Manifest{
-		Versioned:    specs.Versioned{SchemaVersion: 2},
-		MediaType:    ocispec.MediaTypeImageManifest,
-		ArtifactType: artifactType,
+		SchemaVersion: 2,
+		MediaType:     ocispec.MediaTypeImageManifest,
+		ArtifactType:  artifactType,
 		Config: ocispec.Descriptor{
 			MediaType: emptyConfigMediaType,
 			Digest:    cfgDigest,
@@ -1465,14 +1464,18 @@ func (r *Registry) deleteBlob(ctx context.Context, repo string, digest ociregist
 	if _, err := r.getOwnedRepo(ctx, repo); err != nil {
 		return err
 	}
-	// Delete from DB first so that any concurrent reader that opens the file
-	// via the DB index will get a not-found error rather than a dangling open.
-	if err := r.db.DeleteBlob(ctx, string(digest)); err != nil {
-		return fmt.Errorf("deleting blob record: %w", err)
+	// Blobs are content-addressed and shared across repos. Only a blob linked
+	// to this repo may be addressed through it.
+	exists, err := r.db.BlobExistsInRepo(ctx, repo, string(digest))
+	if err != nil {
+		return fmt.Errorf("checking blob repo scope: %w", err)
 	}
-	if err := r.blobs.Delete(ctx, string(digest)); err != nil {
-		return fmt.Errorf("deleting blob file: %w", err)
+	if !exists {
+		return ociregistry.ErrBlobUnknown
 	}
+	// A linked blob is referenced by a manifest, so removing its bytes would
+	// break that manifest (and any other repo sharing it). GC reclaims it once
+	// nothing references it.
 	return nil
 }
 

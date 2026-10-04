@@ -20,6 +20,8 @@ func (db *DB) GetBlob(ctx context.Context, digest string) (*Blob, error) {
 	return b, nil
 }
 
+// A local (re)store refreshes created_at so the orphan-GC grace period covers
+// the latest upload, not the first insert.
 func (db *DB) PutBlob(ctx context.Context, digest string, sizeBytes int64, mediaType *string, storedLocally bool) error {
 	_, err := db.bun.NewRaw(
 		`INSERT INTO blobs (digest, size_bytes, media_type, stored_locally)
@@ -27,8 +29,9 @@ func (db *DB) PutBlob(ctx context.Context, digest string, sizeBytes int64, media
 		 ON CONFLICT(digest) DO UPDATE SET
 		   size_bytes = CASE WHEN excluded.stored_locally THEN excluded.size_bytes ELSE blobs.size_bytes END,
 		   media_type = COALESCE(excluded.media_type, blobs.media_type),
-		   stored_locally = blobs.stored_locally OR excluded.stored_locally`,
-		digest, sizeBytes, mediaType, storedLocally).Exec(ctx)
+		   stored_locally = blobs.stored_locally OR excluded.stored_locally,
+		   created_at = CASE WHEN excluded.stored_locally THEN ? ELSE blobs.created_at END`,
+		digest, sizeBytes, mediaType, storedLocally, time.Now()).Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("putting blob: %w", err)
 	}

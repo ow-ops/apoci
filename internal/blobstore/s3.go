@@ -216,7 +216,7 @@ func (s *S3Store) Size(ctx context.Context, digest string) (int64, error) {
 		return 0, fmt.Errorf("headobject for blob: %w", err)
 	}
 	if out.ContentLength == nil {
-		return 0, nil
+		return 0, fmt.Errorf("headobject for blob %s: missing content length", digest)
 	}
 	return *out.ContentLength, nil
 }
@@ -236,7 +236,7 @@ func (s *S3Store) ModTime(ctx context.Context, digest string) (time.Time, error)
 		return time.Time{}, fmt.Errorf("headobject for blob: %w", err)
 	}
 	if out.LastModified == nil {
-		return time.Time{}, nil
+		return time.Time{}, fmt.Errorf("headobject for blob %s: missing last modified", digest)
 	}
 	return *out.LastModified, nil
 }
@@ -301,14 +301,12 @@ func isS3NotFound(err error) bool {
 	if err == nil {
 		return false
 	}
-	var noSuchKey *types.NoSuchKey
-	if errors.As(err, &noSuchKey) {
+	if _, ok := errors.AsType[*types.NoSuchKey](err); ok {
 		return true
 	}
-	var apiErr smithy.APIError
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[smithy.APIError](err); ok {
 		switch apiErr.ErrorCode() {
-		case "NoSuchKey", "NotFound", "NoSuchBucket":
+		case "NoSuchKey", "NotFound":
 			return true
 		}
 	}
