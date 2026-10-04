@@ -86,6 +86,12 @@ func NewS3(cfg S3Config, logger *slog.Logger) (*S3Store, error) {
 		tempDir: tempDir,
 		logger:  logger,
 	}
+	// HeadObject cannot tell a missing bucket from a missing key (both are a
+	// bodiless 404), so a wrong bucket would make every blob look absent to GC
+	// drift reconciliation. Fail fast instead.
+	if _, err := s.client.HeadBucket(loadCtx, &s3.HeadBucketInput{Bucket: aws.String(cfg.Bucket)}); err != nil {
+		return nil, fmt.Errorf("checking S3 bucket %q: %w", cfg.Bucket, err)
+	}
 	s.removeStaleTempFiles()
 	return s, nil
 }
@@ -332,11 +338,15 @@ type s3ReadSeekCloser struct {
 	offset   int64
 	body     io.ReadCloser
 	fetchErr error
+	closed   bool
 	ctx      context.Context
 	logger   *slog.Logger
 }
 
 func (r *s3ReadSeekCloser) Read(p []byte) (int, error) {
+	if r.closed {
+		return 0, os.ErrClosed
+	}
 	if r.fetchErr != nil {
 		return 0, r.fetchErr
 	}
@@ -381,6 +391,7 @@ func (r *s3ReadSeekCloser) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (r *s3ReadSeekCloser) Close() error {
+	r.closed = true
 	if r.body != nil {
 		err := r.body.Close()
 		r.body = nil

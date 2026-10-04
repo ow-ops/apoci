@@ -76,7 +76,9 @@ func TestGCCleansOrphanedBlobMetadata(t *testing.T) {
 	require.Len(t, digests, 1)
 	require.Equal(t, orphanDigest, digests[0])
 
-	require.NoError(t, db.DeleteBlob(ctx, orphanDigest))
+	deleted, err := db.DeleteBlob(ctx, orphanDigest)
+	require.NoError(t, err)
+	require.True(t, deleted)
 
 	blob, err := db.GetBlob(ctx, orphanDigest)
 	require.NoError(t, err)

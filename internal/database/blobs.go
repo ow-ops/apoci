@@ -123,15 +123,20 @@ func (db *DB) SetBlobStoredLocally(ctx context.Context, digest string, stored bo
 // DeleteBlob is a no-op while a manifest still references the digest: GC picks
 // orphans in one statement and deletes in another, and a manifest can commit in
 // between.
-func (db *DB) DeleteBlob(ctx context.Context, digest string) error {
-	_, err := db.bun.NewRaw(
+// It reports whether a row was removed.
+func (db *DB) DeleteBlob(ctx context.Context, digest string) (bool, error) {
+	res, err := db.bun.NewRaw(
 		`DELETE FROM blobs WHERE digest = ?
 		 AND NOT EXISTS (SELECT 1 FROM package_files WHERE blob_digest = ?)`,
 		digest, digest).Exec(ctx)
 	if err != nil {
-		return fmt.Errorf("deleting blob: %w", err)
+		return false, fmt.Errorf("deleting blob: %w", err)
 	}
-	return nil
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("deleting blob: %w", err)
+	}
+	return n > 0, nil
 }
 
 // peer_blobs gates only stored_locally=false rows (federation-redirect targets).

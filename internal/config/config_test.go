@@ -601,3 +601,25 @@ gc:
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "duplicate")
 }
+
+func TestS3RejectsBlobSizeAbovePutObjectLimit(t *testing.T) {
+	dir := t.TempDir()
+	cfg := func(maxBlob int64) string {
+		return fmt.Sprintf(`
+endpoint: "https://test.example.com"
+dataDir: %q
+storage:
+  type: s3
+  s3:
+    bucket: b
+    region: eu-west-1
+limits:
+  maxBlobSize: %d
+`, dir, maxBlob)
+	}
+	_, err := Load(writeConfig(t, cfg(maxS3BlobSize+1)), true)
+	require.ErrorContains(t, err, "maxBlobSize")
+
+	_, err = Load(writeConfig(t, cfg(maxS3BlobSize)), true)
+	require.NoError(t, err)
+}

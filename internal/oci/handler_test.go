@@ -1439,29 +1439,66 @@ func TestDeleteBlobDoesNotRemoveOtherReposBlob(t *testing.T) {
 	require.NotNil(t, blob)
 }
 
-func TestMountBlobProtectsAgedOrphanFromGC(t *testing.T) {
+func TestMountBlobRequiresBlobInSourceRepo(t *testing.T) {
 	reg, _ := testRegistry(t)
 	ctx := context.Background()
 
-	blob := []byte("aged-orphan")
+	blob := []byte("private-layer")
 	digest := godigest.FromBytes(blob)
-	_, err := reg.pushBlob(ctx, "test.example.com/test/src", ociregistry.Descriptor{Digest: digest, Size: int64(len(blob))}, bytes.NewReader(blob))
+	_, err := reg.pushBlob(ctx, "test.example.com/test/private", ociregistry.Descriptor{Digest: digest, Size: int64(len(blob))}, bytes.NewReader(blob))
 	require.NoError(t, err)
+	pushLayerManifest(t, reg, "test.example.com/test/private", digest, len(blob))
+
+	_, err = reg.mountBlob(ctx, "test.example.com/test/unrelated", "test.example.com/test/dst", digest)
+	require.ErrorIs(t, err, ociregistry.ErrBlobUnknown)
+
+	_, err = reg.mountBlob(ctx, "test.example.com/test/private", "test.example.com/test/dst", digest)
+	require.NoError(t, err)
+}
+
+func TestMountBlobProtectsAgedBlobFromGC(t *testing.T) {
+	reg, _ := testRegistry(t)
+	ctx := context.Background()
+	const src = "test.example.com/test/src"
+
+	blob := []byte("aged-layer")
+	digest := godigest.FromBytes(blob)
+	_, err := reg.pushBlob(ctx, src, ociregistry.Descriptor{Digest: digest, Size: int64(len(blob))}, bytes.NewReader(blob))
+	require.NoError(t, err)
+	manifestDigest := pushLayerManifest(t, reg, src, digest, len(blob))
 
 	db, ok := reg.db.(*database.DB)
 	require.True(t, ok)
 	_, err = db.ExecContext(ctx, "UPDATE blobs SET created_at = ? WHERE digest = ?", time.Now().Add(-48*time.Hour), string(digest))
 	require.NoError(t, err)
 
-	cutoff := time.Now().Add(-time.Hour)
-	orphans, err := db.OrphanedBlobs(ctx, 10, cutoff)
-	require.NoError(t, err)
-	require.Contains(t, orphans, string(digest))
-
-	_, err = reg.mountBlob(ctx, "test.example.com/test/src", "test.example.com/test/dst", digest)
+	_, err = reg.mountBlob(ctx, src, "test.example.com/test/dst", digest)
 	require.NoError(t, err)
 
-	orphans, err = db.OrphanedBlobs(ctx, 10, cutoff)
+	// The source manifest goes away (e.g. retention), leaving only the mount.
+	require.NoError(t, reg.deleteManifest(ctx, src, manifestDigest))
+
+	orphans, err := db.OrphanedBlobs(ctx, 10, time.Now().Add(-time.Hour))
 	require.NoError(t, err)
 	require.NotContains(t, orphans, string(digest), "mount must restart the GC grace period")
+}
+
+func TestChunkedUploadsAreCapped(t *testing.T) {
+	reg, _ := testRegistry(t)
+	reg.maxUploads = 1
+
+	_, err := reg.pushBlobChunked(context.Background(), "test.example.com/test/cap", 0)
+	require.NoError(t, err)
+
+	_, err = reg.pushBlobChunked(context.Background(), "test.example.com/test/cap", 0)
+	require.ErrorIs(t, err, ociregistry.ErrTooManyRequests)
+}
+
+func pushLayerManifest(t *testing.T, reg *Registry, repo string, layer godigest.Digest, size int) ociregistry.Digest {
+	t.Helper()
+	manifest := fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"digest":%q,"size":%d},"layers":[{"mediaType":"application/octet-stream","digest":%q,"size":%d}]}`,
+		layer, size, layer, size)
+	desc, err := reg.pushManifest(context.Background(), repo, "v1", []byte(manifest), "application/vnd.oci.image.manifest.v1+json")
+	require.NoError(t, err)
+	return desc.Digest
 }

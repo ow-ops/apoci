@@ -36,8 +36,6 @@ type RegistryRepository interface {
 	BlobExistsInRepo(ctx context.Context, repoName, digest string) (bool, error)
 	GetBlob(ctx context.Context, digest string) (*database.Blob, error)
 	PutBlob(ctx context.Context, digest string, sizeBytes int64, mediaType *string, storedLocally bool) error
-	DeleteBlob(ctx context.Context, digest string) error
-
 	GetRepository(ctx context.Context, name string) (*database.Repository, error)
 	GetOrCreateRepository(ctx context.Context, name, ownerID string) (*database.Repository, error)
 	ListRepositoriesAfter(ctx context.Context, startAfter string, limit int) ([]database.Repository, error)
@@ -62,6 +60,7 @@ type RegistryRepository interface {
 	CreateUploadSession(ctx context.Context, uuid string, repoID int64, ttl time.Duration) (*database.UploadSession, error)
 	GetUploadSession(ctx context.Context, uuid string) (*database.UploadSession, error)
 	DeleteUploadSession(ctx context.Context, uuid string) error
+	TouchUploadSession(ctx context.Context, uuid string, ttl time.Duration) error
 	ListExpiredUploadSessions(ctx context.Context, limit int) ([]string, error)
 	UploadSessionUUIDsByRepo(ctx context.Context, repoID int64) ([]string, error)
 	AllUploadSessionUUIDs(ctx context.Context) ([]string, error)
@@ -117,9 +116,10 @@ type Registry struct {
 	maxManifestSize int64
 	maxBlobSize     int64
 
-	uploadDir string // staging directory for in-progress chunked uploads
-	uploadsMu sync.Mutex
-	uploads   map[string]*diskBlobWriter
+	uploadDir  string // staging directory for in-progress chunked uploads
+	maxUploads int    // cap on concurrently open chunked uploads
+	uploadsMu  sync.Mutex
+	uploads    map[string]*diskBlobWriter
 }
 
 func NewRegistry(db *database.DB, blobs blobstore.BlobStore, localID, namespace string, maxManifestSize, maxBlobSize int64, logger *slog.Logger) (*Registry, error) {
@@ -142,8 +142,9 @@ func NewRegistry(db *database.DB, blobs blobstore.BlobStore, localID, namespace 
 		// Default staging directory for chunked uploads. The operator should
 		// override this via SetUploadDir to keep large uploads on the data
 		// volume rather than the OS temp dir.
-		uploadDir: os.TempDir(),
-		uploads:   make(map[string]*diskBlobWriter),
+		uploadDir:  os.TempDir(),
+		maxUploads: defaultMaxOpenUploads,
+		uploads:    make(map[string]*diskBlobWriter),
 	}
 	r.Funcs = &ociregistry.Funcs{
 		GetBlob_:               r.getBlob,
@@ -1086,6 +1087,16 @@ func (r *Registry) mountBlob(ctx context.Context, fromRepo, toRepo string, diges
 		return ociregistry.Descriptor{}, fmt.Errorf("getting repository: %w", err)
 	}
 
+	// The blob must be reachable through the source repo, otherwise any writer
+	// could mount a blob from a repo they cannot read just by knowing its digest.
+	inSource, err := r.db.BlobExistsInRepo(ctx, fromRepo, string(digest))
+	if err != nil {
+		return ociregistry.Descriptor{}, fmt.Errorf("checking source repo: %w", err)
+	}
+	if !inSource {
+		return ociregistry.Descriptor{}, ociregistry.ErrBlobUnknown
+	}
+
 	blob, err := r.db.GetBlob(ctx, string(digest))
 	if err != nil {
 		return ociregistry.Descriptor{}, fmt.Errorf("looking up blob: %w", err)
@@ -1119,7 +1130,10 @@ func (r *Registry) mountBlob(ctx context.Context, fromRepo, toRepo string, diges
 	}, nil
 }
 
-const uploadSessionTTL = 1 * time.Hour
+const (
+	uploadSessionTTL      = 1 * time.Hour
+	defaultMaxOpenUploads = 512
+)
 
 func (r *Registry) pushBlobChunked(ctx context.Context, repo string, chunkSize int) (ociregistry.BlobWriter, error) {
 	repo, err := r.normalizeRepoForWrite(repo)
@@ -1167,6 +1181,13 @@ func (r *Registry) pushBlobChunkedResume(ctx context.Context, repo, id string, o
 	w, ok := r.uploads[id]
 	r.uploadsMu.Unlock()
 
+	if ok {
+		// An upload still receiving chunks must outlive the creation-time TTL.
+		if err := r.db.TouchUploadSession(ctx, id, uploadSessionTTL); err != nil {
+			r.logger.Warn("failed to extend upload session", "uuid", id, "error", err)
+		}
+	}
+
 	if !ok {
 		// Session exists in DB but the staged upload was lost (e.g. server
 		// restart). Clean up the stale DB record.
@@ -1180,6 +1201,12 @@ func (r *Registry) pushBlobChunkedResume(ctx context.Context, repo, id string, o
 // newUploadWriter creates a disk-backed blob writer for a chunked upload and
 // registers it so subsequent PATCH/PUT requests can resume it by ID.
 func (r *Registry) newUploadWriter(repo, uuid string) (*diskBlobWriter, error) {
+	r.uploadsMu.Lock()
+	open := len(r.uploads)
+	r.uploadsMu.Unlock()
+	if open >= r.maxUploads {
+		return nil, fmt.Errorf("%w: too many open uploads (%d)", ociregistry.ErrTooManyRequests, open)
+	}
 	w, err := newDiskBlobWriter(r.uploadDir, uuid, r.maxBlobSize, nil)
 	if err != nil {
 		return nil, err

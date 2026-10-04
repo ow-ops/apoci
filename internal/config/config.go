@@ -103,6 +103,7 @@ type Peering struct {
 const (
 	DefaultMaxManifestSize int64 = 10 * 1024 * 1024  // 10 MB
 	DefaultMaxBlobSize     int64 = 512 * 1024 * 1024 // 512 MB
+	maxS3BlobSize          int64 = 5 << 30           // S3 single PutObject limit
 )
 
 type Federation struct {
@@ -814,6 +815,9 @@ func validateStorage(cfg *Config) error {
 			if _, err := url.ParseRequestURI(cfg.Storage.S3.Endpoint); err != nil {
 				return fmt.Errorf("storage.s3.endpoint is not a valid URL: %w", err)
 			}
+		}
+		if cfg.Limits.MaxBlobSize > maxS3BlobSize {
+			return fmt.Errorf("limits.maxBlobSize must not exceed %d bytes (5 GiB single PutObject limit) when storage.type is 's3'", maxS3BlobSize)
 		}
 	}
 	return nil

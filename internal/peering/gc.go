@@ -23,7 +23,7 @@ import (
 type GCRepository interface {
 	CleanupStalePeerBlobs(ctx context.Context, olderThan time.Duration) (int64, error)
 	OrphanedBlobs(ctx context.Context, limit int, createdBefore time.Time) ([]string, error)
-	DeleteBlob(ctx context.Context, digest string) error
+	DeleteBlob(ctx context.Context, digest string) (bool, error)
 	AllBlobDigests(ctx context.Context, pageSize int) (map[string]bool, error)
 	PruneDeletedManifests(ctx context.Context, olderThan time.Duration) (int64, error)
 	ListBlobsForReconcile(ctx context.Context, startAfter string, limit int) ([]database.BlobReconcileRow, error)
@@ -478,11 +478,14 @@ func (gc *GarbageCollector) cleanupOrphanedBlobMetadata(ctx context.Context) {
 
 		removed := 0
 		for _, digest := range digests {
-			if err := gc.db.DeleteBlob(ctx, digest); err != nil {
+			deleted, err := gc.db.DeleteBlob(ctx, digest)
+			if err != nil {
 				gc.logger.Warn("gc: failed to delete orphaned blob metadata", "digest", digest, "error", err)
 				continue
 			}
-			removed++
+			if deleted {
+				removed++
+			}
 		}
 		totalRemoved += removed
 

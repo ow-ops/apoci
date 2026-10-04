@@ -39,6 +39,18 @@ func (db *DB) GetUploadSession(ctx context.Context, uuid string) (*UploadSession
 	return s, nil
 }
 
+// TouchUploadSession pushes a live session's expiry ttl into the future so an
+// upload that is still receiving chunks isn't reaped mid-stream.
+func (db *DB) TouchUploadSession(ctx context.Context, uuid string, ttl time.Duration) error {
+	_, err := db.bun.NewRaw(
+		"UPDATE upload_sessions SET expires_at = ? WHERE uuid = ?",
+		time.Now().Add(ttl), uuid).Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("touching upload session: %w", err)
+	}
+	return nil
+}
+
 func (db *DB) DeleteUploadSession(ctx context.Context, uuid string) error {
 	_, err := db.bun.NewRaw(
 		"DELETE FROM upload_sessions WHERE uuid = ?", uuid).Exec(ctx)

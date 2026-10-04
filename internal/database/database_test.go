@@ -412,7 +412,8 @@ func TestBlobCRUD(t *testing.T) {
 	require.False(t, remote.StoredLocally, "expected remote blob to not be local")
 
 	// Delete
-	require.NoError(t, db.DeleteBlob(ctx, "sha256:blob1"))
+	_, err = db.DeleteBlob(ctx, "sha256:blob1")
+	require.NoError(t, err)
 	blob2, _ := db.GetBlob(ctx, "sha256:blob1")
 	require.Nil(t, blob2, "expected nil after delete")
 }
@@ -452,7 +453,9 @@ func TestDeleteBlobKeepsReferencedBlob(t *testing.T) {
 	require.NoError(t, putManifestWithLayer(t, db, "sha256:referenced", false))
 
 	// GC lists orphans, then a manifest commits before the row is deleted.
-	require.NoError(t, db.DeleteBlob(ctx, "sha256:referenced"))
+	deleted, err := db.DeleteBlob(ctx, "sha256:referenced")
+	require.NoError(t, err)
+	require.False(t, deleted)
 
 	blob, err := db.GetBlob(ctx, "sha256:referenced")
 	require.NoError(t, err)
@@ -471,6 +474,23 @@ func TestPutManifestWithLayersRejectsMissingLocalBlob(t *testing.T) {
 
 	require.NoError(t, db.PutBlob(ctx, "sha256:here", 1, nil, true))
 	require.NoError(t, putManifestWithLayer(t, db, "sha256:here", true))
+}
+
+func TestTouchUploadSessionExtendsExpiry(t *testing.T) {
+	db := testDB(t)
+	ctx := context.Background()
+	repo, err := db.GetOrCreateRepository(ctx, "test/touch", testAliceActor)
+	require.NoError(t, err)
+
+	_, err = db.CreateUploadSession(ctx, "touch-me", repo.ID, time.Minute)
+	require.NoError(t, err)
+
+	require.NoError(t, db.TouchUploadSession(ctx, "touch-me", 2*time.Hour))
+
+	sessions, err := db.ListUploadSessions(ctx)
+	require.NoError(t, err)
+	require.Len(t, sessions, 1)
+	require.WithinDuration(t, time.Now().Add(2*time.Hour), sessions[0].ExpiresAt, time.Minute)
 }
 
 func TestUploadSessionCRUD(t *testing.T) {
