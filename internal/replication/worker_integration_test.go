@@ -130,8 +130,8 @@ func TestWorkerReplicatesImage(t *testing.T) {
 		MediaType: ocispec.MediaTypeImageManifest,
 		Config:    ocispec.Descriptor{MediaType: ocispec.MediaTypeImageConfig, Digest: godigest.Digest(configDigest), Size: int64(len(configData))},
 		Layers:    []ocispec.Descriptor{{MediaType: ocispec.MediaTypeImageLayerGzip, Digest: godigest.Digest(layerDigest), Size: int64(len(layerData))}},
-	}
-	manifest.SchemaVersion = 2
+
+		SchemaVersion: 2}
 	manifestData, err := json.Marshal(manifest)
 	require.NoError(t, err)
 	manifestDigest := string(godigest.FromBytes(manifestData))
@@ -186,8 +186,8 @@ func TestWorkerSkipsExistingBlob(t *testing.T) {
 	srv := httptest.NewServer(target.handler())
 	defer srv.Close()
 
-	manifest := ocispec.Manifest{MediaType: ocispec.MediaTypeImageManifest, Config: ocispec.Descriptor{Digest: godigest.Digest(configDigest), Size: int64(len(configData))}}
-	manifest.SchemaVersion = 2
+	manifest := ocispec.Manifest{MediaType: ocispec.MediaTypeImageManifest, Config: ocispec.Descriptor{Digest: godigest.Digest(configDigest), Size: int64(len(configData))},
+		SchemaVersion: 2}
 	manifestData, _ := json.Marshal(manifest)
 	manifestDigest := string(godigest.FromBytes(manifestData))
 

@@ -26,8 +26,8 @@ func addImage(src *fakeSource, config, layer []byte) string {
 		MediaType: ocispec.MediaTypeImageManifest,
 		Config:    ocispec.Descriptor{MediaType: ocispec.MediaTypeImageConfig, Digest: godigest.Digest(cd), Size: int64(len(config))},
 		Layers:    []ocispec.Descriptor{{MediaType: ocispec.MediaTypeImageLayerGzip, Digest: godigest.Digest(ld), Size: int64(len(layer))}},
-	}
-	m.SchemaVersion = 2
+
+		SchemaVersion: 2}
 	data, _ := json.Marshal(m)
 	md := string(godigest.FromBytes(data))
 	src.manifests[md] = blob{data, ocispec.MediaTypeImageManifest}
@@ -47,8 +47,8 @@ func TestWorkerReplicatesIndex(t *testing.T) {
 			{MediaType: ocispec.MediaTypeImageManifest, Digest: godigest.Digest(child1)},
 			{MediaType: ocispec.MediaTypeImageManifest, Digest: godigest.Digest(child2)},
 		},
-	}
-	index.SchemaVersion = 2
+
+		SchemaVersion: 2}
 	indexData, _ := json.Marshal(index)
 	indexDigest := string(godigest.FromBytes(indexData))
 	src.manifests[indexDigest] = blob{indexData, ocispec.MediaTypeImageIndex}

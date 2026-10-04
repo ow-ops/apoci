@@ -69,19 +69,17 @@ func publishBody(t *testing.T, name, version string, tarball []byte, distTag str
 		gtnpm.PackageMetadata
 		Attachments map[string]*gtnpm.PackageAttachment `json:"_attachments"`
 	}{
-		PackageMetadata: gtnpm.PackageMetadata{
-			ID:       name,
-			Name:     name,
-			DistTags: map[string]string{},
-			Versions: map[string]*gtnpm.PackageMetadataVersion{
-				version: {
-					ID:           name + "@" + version,
-					Name:         name,
-					Version:      version,
-					Description:  "test pkg",
-					Dist:         gtnpm.PackageDistribution{Integrity: integrity},
-					Dependencies: map[string]string{"left-pad": testVersion},
-				},
+		ID:       name,
+		Name:     name,
+		DistTags: map[string]string{},
+		Versions: map[string]*gtnpm.PackageMetadataVersion{
+			version: {
+				ID:           name + "@" + version,
+				Name:         name,
+				Version:      version,
+				Description:  "test pkg",
+				Dist:         gtnpm.PackageDistribution{Integrity: integrity},
+				Dependencies: map[string]string{"left-pad": testVersion},
 			},
 		},
 		Attachments: map[string]*gtnpm.PackageAttachment{
@@ -191,13 +189,11 @@ func TestPublishBadIntegrity(t *testing.T) {
 		gtnpm.PackageMetadata
 		Attachments map[string]*gtnpm.PackageAttachment `json:"_attachments"`
 	}{
-		PackageMetadata: gtnpm.PackageMetadata{
-			ID: testPkgLodash, Name: testPkgLodash,
-			Versions: map[string]*gtnpm.PackageMetadataVersion{
-				testVersion: {
-					Name: testPkgLodash, Version: testVersion,
-					Dist: gtnpm.PackageDistribution{Integrity: "sha512-deadbeef=="},
-				},
+		ID: testPkgLodash, Name: testPkgLodash,
+		Versions: map[string]*gtnpm.PackageMetadataVersion{
+			testVersion: {
+				Name: testPkgLodash, Version: testVersion,
+				Dist: gtnpm.PackageDistribution{Integrity: "sha512-deadbeef=="},
 			},
 		},
 		Attachments: map[string]*gtnpm.PackageAttachment{
