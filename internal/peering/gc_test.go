@@ -268,7 +268,7 @@ func TestReconcile_PromotesWhenFilePresentAndRowSaysRemote(t *testing.T) {
 	require.True(t, got.StoredLocally, "stored_locally should have been flipped to true")
 }
 
-func TestReconcile_LeavesRowAloneWhenNoPeerAndFileMissing(t *testing.T) {
+func TestReconcile_KeepsRowButMarksRemoteWhenNoPeerAndFileMissing(t *testing.T) {
 	db, blobs := testGCDeps(t)
 	ctx := context.Background()
 	gc := newReconcileGC(t, db, blobs)
@@ -281,7 +281,7 @@ func TestReconcile_LeavesRowAloneWhenNoPeerAndFileMissing(t *testing.T) {
 	got, err := db.GetBlob(ctx, digest)
 	require.NoError(t, err)
 	require.NotNil(t, got, "unrecoverable drift must not silently delete the row")
-	require.True(t, got.StoredLocally)
+	require.False(t, got.StoredLocally, "a missing file must not be advertised as local")
 }
 
 func TestOrphanedBlobFiles_RepairsRowWhenManifestStillReferences(t *testing.T) {

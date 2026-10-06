@@ -507,6 +507,75 @@ func TestResolveBlobAndManifest(t *testing.T) {
 	require.Error(t, err, "expected error for nonexistent manifest")
 }
 
+func TestBlobMissingFromStorageIsReportedUnknownAndHealsOnRepush(t *testing.T) {
+	repush := map[string]func(t *testing.T, reg *Registry, repo string, data []byte){
+		"monolithic": func(t *testing.T, reg *Registry, repo string, data []byte) {
+			_, err := reg.PushBlob(context.Background(), repo, descriptorFor(data), bytes.NewReader(data))
+			require.NoError(t, err)
+		},
+		"chunked": func(t *testing.T, reg *Registry, repo string, data []byte) {
+			w, err := reg.pushBlobChunked(context.Background(), repo, 0)
+			require.NoError(t, err)
+			_, err = w.Write(data)
+			require.NoError(t, err)
+			_, err = w.Commit(godigest.FromBytes(data))
+			require.NoError(t, err)
+		},
+	}
+	for name, push := range repush {
+		t.Run(name, func(t *testing.T) {
+			reg, srv := testRegistry(t)
+			ctx := context.Background()
+			repo := "test.example.com/test/heal"
+			data := []byte("bytes lost from storage " + name)
+			desc := pushBlobWithManifest(t, reg, repo, data)
+			blobURL := srv.URL + "/v2/" + repo + "/blobs/" + string(desc.Digest)
+
+			status := func(method string) int {
+				req, err := http.NewRequest(method, blobURL, nil)
+				require.NoError(t, err)
+				resp, err := http.DefaultClient.Do(req)
+				require.NoError(t, err)
+				_ = resp.Body.Close()
+				return resp.StatusCode
+			}
+			storedLocally := func() bool {
+				blob, err := reg.db.GetBlob(ctx, string(desc.Digest))
+				require.NoError(t, err)
+				require.NotNil(t, blob)
+				return blob.StoredLocally
+			}
+
+			require.NoError(t, reg.blobs.Delete(ctx, string(desc.Digest)))
+
+			require.Equal(t, http.StatusNotFound, status(http.MethodHead))
+			require.False(t, storedLocally())
+			require.Equal(t, http.StatusNotFound, status(http.MethodGet))
+
+			push(t, reg, repo, data)
+
+			require.True(t, storedLocally())
+			require.Equal(t, http.StatusOK, status(http.MethodHead))
+			require.Equal(t, http.StatusOK, status(http.MethodGet))
+		})
+	}
+}
+
+func TestGetBlobMissingFromStorageMarksNotStoredLocally(t *testing.T) {
+	reg, _ := testRegistry(t)
+	ctx := context.Background()
+	repo := "test.example.com/test/getmissing"
+	desc := pushBlobWithManifest(t, reg, repo, []byte("gone"))
+
+	require.NoError(t, reg.blobs.Delete(ctx, string(desc.Digest)))
+
+	_, err := reg.GetBlob(ctx, repo, desc.Digest)
+	require.ErrorIs(t, err, ociregistry.ErrBlobUnknown)
+	blob, err := reg.db.GetBlob(ctx, string(desc.Digest))
+	require.NoError(t, err)
+	require.False(t, blob.StoredLocally)
+}
+
 func TestBlobReadRequiresExistingRepo(t *testing.T) {
 	reg, _ := testRegistry(t)
 	ctx := context.Background()

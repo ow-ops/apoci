@@ -651,6 +651,10 @@ func (gc *GarbageCollector) reconcileBlobStorageDrift(ctx context.Context) {
 					gc.logger.Warn("gc: drift reconcile: file missing, degraded to peer redirect", "digest", row.Digest)
 					continue
 				}
+				// HEAD then reports the blob unknown, so the next push re-uploads it.
+				if err := gc.db.SetBlobStoredLocally(ctx, row.Digest, false); err != nil {
+					gc.logger.Warn("gc: drift reconcile: degrade failed", "digest", row.Digest, "error", err)
+				}
 				unrecoverable = append(unrecoverable, row.Digest)
 				gc.logger.Error("gc: drift reconcile: file missing, no peer holds it", "digest", row.Digest)
 			case !row.StoredLocally && exists:

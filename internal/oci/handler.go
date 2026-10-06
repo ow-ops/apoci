@@ -36,6 +36,7 @@ type RegistryRepository interface {
 	BlobExistsInRepo(ctx context.Context, repoName, digest string) (bool, error)
 	GetBlob(ctx context.Context, digest string) (*database.Blob, error)
 	PutBlob(ctx context.Context, digest string, sizeBytes int64, mediaType *string, storedLocally bool) error
+	SetBlobStoredLocally(ctx context.Context, digest string, stored bool) error
 	GetRepository(ctx context.Context, name string) (*database.Repository, error)
 	GetOrCreateRepository(ctx context.Context, name, ownerID string) (*database.Repository, error)
 	ListRepositoriesAfter(ctx context.Context, startAfter string, limit int) ([]database.Repository, error)
@@ -451,7 +452,25 @@ func (r *Registry) getBlob(ctx context.Context, repo string, digest ociregistry.
 		}
 	}
 
+	r.markBlobMissing(ctx, string(digest))
 	return nil, ociregistry.ErrBlobUnknown
+}
+
+// markBlobMissing clears stored_locally for a blob whose bytes are gone so the
+// next push re-uploads it.
+func (r *Registry) markBlobMissing(ctx context.Context, digest string) {
+	if err := r.db.SetBlobStoredLocally(ctx, digest, false); err != nil {
+		r.logger.Warn("failed to mark missing blob", "digest", digest, "error", err)
+		return
+	}
+	// A concurrent push writes the file before its row; don't undo it.
+	if ok, err := r.blobs.Exists(ctx, digest); err == nil && ok {
+		if err := r.db.SetBlobStoredLocally(ctx, digest, true); err != nil {
+			r.logger.Warn("failed to restore blob stored_locally", "digest", digest, "error", err)
+		}
+		return
+	}
+	r.logger.Warn("blob missing from storage, marked not stored locally", "digest", digest)
 }
 
 func (r *Registry) fetchBlobFromPeers(ctx context.Context, repo string, digest ociregistry.Digest) (ociregistry.BlobReader, error) {
@@ -703,6 +722,7 @@ func (r *Registry) getBlobRange(ctx context.Context, repo string, digest ociregi
 			}
 		}
 		if f == nil {
+			r.markBlobMissing(ctx, string(digest))
 			return nil, ociregistry.ErrBlobUnknown
 		}
 	}
@@ -936,6 +956,15 @@ func (r *Registry) resolveBlob(ctx context.Context, repo string, digest ociregis
 		return ociregistry.Descriptor{}, fmt.Errorf("resolving blob: %w", err)
 	}
 	if blob == nil || !blob.StoredLocally {
+		return ociregistry.Descriptor{}, ociregistry.ErrBlobUnknown
+	}
+
+	stored, err := r.blobs.Exists(ctx, string(digest))
+	if err != nil {
+		return ociregistry.Descriptor{}, fmt.Errorf("checking blob storage: %w", err)
+	}
+	if !stored {
+		r.markBlobMissing(ctx, string(digest))
 		return ociregistry.Descriptor{}, ociregistry.ErrBlobUnknown
 	}
 
